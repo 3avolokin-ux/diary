@@ -209,6 +209,8 @@ textarea{width:100%;min-height:90px;font:13px/1.4 var(--f-num);border:1px solid 
 .sc{background:var(--surf);border:1px solid var(--line);border-radius:18px;padding:14px;margin-bottom:10px;box-shadow:var(--shadow);cursor:pointer}
 .sc .h{display:flex;gap:12px;align-items:center}
 .sc .h .tx{flex:1;min-width:0}
+.sc .ar{color:var(--mut2);font-size:22px;flex:0 0 auto;margin-left:-2px}
+.sc:active{transform:scale(.99)}
 .sc .nm{font-weight:800;font-size:17px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .sc .sch{color:var(--mut);font-size:12px;margin-top:2px}
 .bal{text-align:right;flex:0 0 auto}
@@ -474,7 +476,7 @@ function vHome(){
   if(!arr.length)h+='<div class="empty">Учеников пока нет. Добавьте первого: имя, ставку и дни занятий.</div>';
   arr.forEach(function(o){
     var st=o.st,b=balance(st.id),s=o.s;
-    h+='<div class="sc" data-a="scard" data-v="'+st.id+'"><div class="h"><span class="av">'+esc(st.name.charAt(0).toUpperCase())+'</span><div class="tx"><div class="nm">'+esc(st.name)+'</div><div class="sch">'+(st.scheme==='deposit'?'депозит':'оплата за урок')+' · '+rub(st.rate)+'/ч · '+esc(daysText(st))+'</div></div><div class="bal"><b class="'+balCls(b,s)+'" style="'+(s.c==='warn'?'color:var(--warn)':'')+'">'+rub(b)+'</b><span>'+balLabel(st,b,s)+'</span></div></div>';
+    h+='<div class="sc" data-a="scard" data-v="'+st.id+'"><div class="h"><span class="av">'+esc(st.name.charAt(0).toUpperCase())+'</span><div class="tx"><div class="nm">'+esc(st.name)+'</div><div class="sch">'+(st.scheme==='deposit'?'депозит':'оплата за урок')+' · '+rub(st.rate)+'/ч · '+esc(daysText(st))+'</div></div><div class="bal"><b class="'+balCls(b,s)+'" style="'+(s.c==='warn'?'color:var(--warn)':'')+'">'+rub(b)+'</b><span>'+balLabel(st,b,s)+'</span></div><span class="ar" aria-hidden="true">›</span></div>';
     h+='<div class="ln">'+stLine(st,s)+'</div>';
     if(o.t.length){
       o.t.forEach(function(x){
@@ -482,11 +484,7 @@ function vHome(){
         if(!r)tt='Сегодня <b>'+esc(x.time||'')+'</b> · '+hrs(x.plan)+' · '+rub(x.plan*getRate(x))+(st.scheme==='deposit'?' · '+depNote(st,x):'');
         else if(r.st==='done')tt='<span class="gd">Проведен '+hrs(r.fact)+' · '+rub(c)+'</span>'+(st.scheme==='lesson'?(payFor(x.k)?' · оплачен':' · <span class="bd">не оплачен</span>'):'');
         else tt='Сегодня: '+(r.st==='cpaid'?'отмена с оплатой':r.st==='cancel'?'отменен':'перенесен');
-        h+='<div class="tl"><div class="tt">'+tt+'</div>';
-        if(!r)h+='<button class="pv" data-a="tick" data-v="'+x.k+'">Провела</button>';
-        else{ if(st.scheme==='lesson'&&c>0){var on=!!payFor(x.k);h+='<button class="ck rb'+(on?' on':'')+'" data-a="paid" data-v="'+x.k+'" aria-label="Оплата">₽</button>';}
-          h+='<button class="ck '+(c>0||r.st==='done'?'on':'x')+'" data-a="tick" data-v="'+x.k+'" aria-label="Снять отметку">'+(c>0||r.st==='done'?'✓':'×')+'</button>';}
-        h+='<button class="mo" data-a="more" data-v="'+x.k+'" aria-label="Другие действия">···</button></div>';
+        h+='<div class="tl"><div class="tt">'+tt+'</div>'+(r?'':'<span class="chip" style="background:var(--hero-soft);color:var(--hero)">не отмечен</span>')+'</div>';
       });
     }else{var n=nextL(st.id);h+='<div class="tl"><div class="tt">'+(n?'Следующий урок: '+esc(dlong(n.k.slice(0,10)))+(n.time?', '+esc(n.time):''):'Уроков по расписанию нет')+'</div></div>';}
     h+='</div>';
@@ -504,6 +502,8 @@ function vStudent(id){
   var h='<div class="top"><button class="ib" data-a="sback" aria-label="Назад">‹</button><div class="grow"><div class="eyebrow">'+(st.scheme==='deposit'?'депозит':'оплата за урок')+' · '+rub(st.rate)+'/ч · урок '+hrs(st.dur)+'</div><h1>'+esc(st.name)+'</h1></div><button class="ib" data-a="sedit" data-v="'+id+'" aria-label="Изменить ученика"><svg viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16v4zM14 6l4 4"/></svg></button></div>';
   h+='<div class="bigbal"><div class="eyebrow">'+(st.scheme==='deposit'?'на депозите':(b<0?'долг':'баланс'))+'</div><div class="v '+balCls(b,s)+'" style="'+(s.c==='warn'?'color:var(--warn)':'')+'">'+rub(b)+'</div><div class="s">'+stLine(st,s)+' · '+esc(daysText(st))+'</div>';
   h+='<div class="two"><button class="b p" data-a="payadd" data-v="'+id+'">'+(st.scheme==='deposit'?'Пополнить':'Внести оплату')+'</button><button class="b" data-a="msg" data-v="'+id+'">Напомнить</button></div></div>';
+  var TD=todayL(id);
+  if(TD.length){h+='<div class="lbl">Сегодня</div>';TD.forEach(function(x){h+=lesRow(x,true);});}
   h+='<div class="mhead"><button class="ib" data-a="smprev" aria-label="Прошлый месяц">‹</button><h2>'+MN[m]+' '+y+'</h2><button class="ib" data-a="smnext" aria-label="Следующий месяц">›</button></div>';
   var L=lessonsOfStudent(id,smon),pn=0,fn=0,fm=0,got=0;
   L.forEach(function(x){var r=S.rec[x.k];if(!r||r.st==='done'||r.st==='cpaid')pn++;if(r&&r.st==='done')fn++;fm+=charge(x.k);});
