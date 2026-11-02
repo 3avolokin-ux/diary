@@ -40,13 +40,14 @@
   --shadow:0 2px 10px rgba(16,20,30,.07); color-scheme:light;}
 
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+[hidden]{display:none!important}
 html,body{background:var(--bg);color:var(--ink)}
-body{margin:0;font:400 15px/1.4 var(--f-body);-webkit-font-smoothing:antialiased}
+body{margin:0;touch-action:manipulation;font:400 15px/1.4 var(--f-body);-webkit-font-smoothing:antialiased}
 .app{max-width:520px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:14px calc(92px + env(safe-area-inset-bottom,0px))}
 .num{font-family:var(--f-num);font-variant-numeric:tabular-nums}
 button{font:inherit;color:inherit;cursor:pointer}
 button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
-input,select{font:inherit;color:var(--ink);background:var(--surf);border:1px solid var(--line2);border-radius:10px;padding:10px 12px;width:100%}
+input,select{font:inherit;font-size:16px;color:var(--ink);background:var(--surf);border:1px solid var(--line2);border-radius:10px;padding:10px 12px;width:100%}
 
 .top{display:flex;align-items:center;gap:10px;margin-bottom:14px}
 .top h1{font:800 28px/1.05 var(--f-disp);margin:0;letter-spacing:-.5px;text-wrap:balance}
@@ -157,7 +158,7 @@ tr.tot td{font-weight:700;border-bottom:none}
 .hl:last-child{border-bottom:none}
 .hl .a{font-family:var(--f-num);white-space:nowrap}
 .box{background:var(--surf);border:1px solid var(--line);border-radius:14px;padding:4px 13px;margin-bottom:12px}
-textarea{width:100%;min-height:90px;font:13px/1.4 var(--f-num);border:1px solid var(--line2);border-radius:10px;padding:10px;background:var(--surf);color:var(--ink)}
+textarea{width:100%;min-height:90px;font:16px/1.4 var(--f-body);border:1px solid var(--line2);border-radius:10px;padding:10px;background:var(--surf);color:var(--ink)}
 
 .nav{position:fixed;left:0;right:0;bottom:0;z-index:20;background:var(--surf);border-top:1px solid var(--line);padding:6px max(10px,env(safe-area-inset-right,0px)) calc(6px + env(safe-area-inset-bottom,0px)) max(10px,env(safe-area-inset-left,0px))}
 .nav .in{max-width:520px;margin:0 auto;display:grid;grid-template-columns:repeat(3,1fr);gap:4px}
@@ -230,6 +231,13 @@ textarea{width:100%;min-height:90px;font:13px/1.4 var(--f-num);border:1px solid 
 .rw .tm small{display:block;font-size:10.5px;color:var(--mut);font-weight:600;margin-bottom:3px}
 .rw .tm{flex-direction:column;align-items:flex-start;justify-content:center}
 .rw.fut{opacity:.55;box-shadow:none}
+
+.login{position:fixed;inset:0;z-index:50;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:24px max(16px,env(safe-area-inset-right,0px)) 24px max(16px,env(safe-area-inset-left,0px))}
+.login .in{width:100%;max-width:380px}
+.login h1{font:800 28px/1.1 var(--f-disp);margin:0 0 6px;letter-spacing:-.5px}
+.login p{color:var(--mut);margin:0 0 20px;font-size:14px}
+.login .err{color:var(--bad);font-size:13.5px;min-height:20px;margin:6px 0 0}
+.login .b{min-height:48px}
 @media (prefers-reduced-motion: reduce){*{transition:none!important}}
 </style>
 </head><body>
@@ -241,6 +249,18 @@ textarea{width:100%;min-height:90px;font:13px/1.4 var(--f-num);border:1px solid 
   <button data-a="tab" data-v="rep"><svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M21 20H3"/></svg>Итоги</button>
 </div></nav>
 <div id="ovl"></div>
+<div class="login" id="blocked" hidden><div class="in">
+  <h1>Доступ закрыт</h1><p id="bl_tx">Срок доступа к дневнику закончился. Ваши данные сохранены и вернутся сразу после продления.</p>
+  <button class="b wide" id="bl_out">Выйти из аккаунта</button>
+</div></div>
+<div class="login" id="login" hidden><div class="in">
+  <h1>Дневник репетитора</h1><p>Войдите, чтобы данные хранились в облаке и были на всех ваших устройствах.</p>
+  <label class="fl"><span>Почта</span><input id="lg_mail" type="email" autocomplete="username" inputmode="email"></label>
+  <label class="fl"><span>Пароль</span><input id="lg_pass" type="password" autocomplete="current-password"></label>
+  <button class="b p wide" id="lg_btn">Войти</button>
+  <button class="b lnk wide" id="lg_reset">Забыли пароль?</button>
+  <div class="err" id="lg_err" role="alert"></div>
+</div></div>
 
 <script>
 "use strict";
@@ -293,8 +313,71 @@ function seed(){
   }
   return s;
 }
+/* ===== ОБЛАКО (Firebase). Вставьте блок firebaseConfig из консоли Firebase. Пустой блок = работа без облака. ===== */
+var FIREBASE_CONFIG = {
+  apiKey: "AIzaSyALKM05EZzVay542rdglJLVoQW3xaUgGdk",
+  authDomain: "tutor-kdp.firebaseapp.com",
+  projectId: "tutor-kdp",
+  storageBucket: "tutor-kdp.firebasestorage.app",
+  messagingSenderId: "11601784245",
+  appId: "1:11601784245:web:e5cd1f38c271fcd50c3dfc"
+};
+var FB_ON=!!(FIREBASE_CONFIG.apiKey&&FIREBASE_CONFIG.projectId);
+var FB={auth:null,doc:null,ready:false,user:null,timer:null,state:'off',until:null};
+function toD(u){if(!u)return null;return u.toDate?u.toDate():new Date(u);}
+function daysLeft(){if(!FB.until)return null;return Math.ceil((FB.until-new Date())/86400000);}
+function cloudPush(){
+  if(!FB.doc||!FB.ready)return;
+  clearTimeout(FB.timer);
+  FB.timer=setTimeout(function(){
+    try{FB.doc.set(JSON.parse(JSON.stringify(S))).catch(function(){toast('Не сохранилось в облако, проверьте интернет');});}catch(e){}
+  },400);
+}
+function loadJs(src){return new Promise(function(ok,bad){var el=document.createElement('script');el.src=src;el.onload=ok;el.onerror=bad;document.head.appendChild(el);});}
+function showLogin(on){document.getElementById('login').hidden=!on;}
+function loginErr(t){document.getElementById('lg_err').textContent=t||'';}
+function initCloud(){
+  var V='https://www.gstatic.com/firebasejs/10.12.2/';
+  var p=(typeof firebase!=='undefined'&&firebase.firestore)?Promise.resolve():loadJs(V+'firebase-app-compat.js').then(function(){return loadJs(V+'firebase-auth-compat.js');}).then(function(){return loadJs(V+'firebase-firestore-compat.js');});
+  p.then(function(){
+    try{firebase.initializeApp(FIREBASE_CONFIG);}catch(e){}
+    FB.auth=firebase.auth();var db=firebase.firestore();
+    try{db.enablePersistence({synchronizeTabs:true}).catch(function(){});}catch(e){}
+    var btn=document.getElementById('lg_btn'),mail=document.getElementById('lg_mail'),pass=document.getElementById('lg_pass');
+    btn.onclick=function(){loginErr('');btn.textContent='Вход...';
+      FB.auth.signInWithEmailAndPassword((mail.value||'').trim(),pass.value||'').catch(function(){btn.textContent='Войти';loginErr('Не удалось войти. Проверьте почту и пароль.');});};
+    pass.onkeydown=function(e){if(e.key==='Enter')btn.click();};
+    mail.onkeydown=function(e){if(e.key==='Enter')pass.focus();};
+    document.getElementById('lg_reset').onclick=function(){var m=(mail.value||'').trim();if(!m){loginErr('Введите почту, на нее придет ссылка для нового пароля.');mail.focus();return;}
+      FB.auth.sendPasswordResetEmail(m).then(function(){loginErr('Письмо отправлено на '+m+'. Проверьте почту и папку «Спам».');}).catch(function(){loginErr('Не получилось отправить письмо. Проверьте адрес.');});};
+    document.getElementById('bl_out').onclick=function(){try{localStorage.removeItem(KEY);}catch(e){}S=blank();render();document.getElementById('blocked').hidden=true;FB.auth.signOut();};
+    FB.auth.onAuthStateChanged(function(user){
+      if(!user){FB.user=null;FB.doc=null;FB.ready=false;FB.state='out';btn.textContent='Войти';showLogin(true);return;}
+      FB.user=user;showLogin(false);FB.state='sync';
+      FB.doc=db.collection('tutors').doc(user.uid);
+      document.getElementById('blocked').hidden=true;
+      db.collection('access').doc(user.uid).get().then(function(sn){FB.until=sn.exists?toD(sn.data().until):null;if(!document.querySelector('.ov'))render();}).catch(function(){});
+      FB.doc.onSnapshot(function(snap){
+        if(snap.exists){
+          if(snap.metadata&&snap.metadata.hasPendingWrites)return; /* свое же изменение, уже на экране */
+          var d=snap.data();
+          if(d&&d.students){S=d;saveLocal();applyTheme();if(!document.querySelector('.ov'))render();}
+        }else{
+          /* первый вход: переносим данные с этого телефона, если они настоящие */
+          var loc=load();
+          S=(loc&&!loc.demo&&loc.students&&loc.students.length)?loc:blank();
+          saveLocal();applyTheme();render();
+          FB.ready=true;cloudPush();
+          if(S.students.length)toast('Данные с этого телефона перенесены в облако');
+        }
+        FB.ready=true;FB.state=(snap.metadata&&snap.metadata.fromCache)?'cache':'ok';
+      },function(e){FB.ready=true;FB.state='err';if(e&&e.code==='permission-denied'){document.getElementById('blocked').hidden=false;}});
+    });
+  }).catch(function(){FB.state='nolib';toast('Нет связи с облаком. Работаю на этом устройстве.');});
+}
 function load(){try{var r=localStorage.getItem(KEY);if(r){var o=JSON.parse(r);if(o&&o.students)return o;}}catch(e){}return null;}
-function save(){try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}}
+function saveLocal(){try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}}
+function save(){saveLocal();cloudPush();}
 
 function getS(id){for(var i=0;i<S.students.length;i++)if(S.students[i].id===id)return S.students[i];return null;}
 function schedAt(st,date){var v=null;(st.sched||[]).forEach(function(x){if(x.from<=date)v=x;});return v;}
@@ -466,6 +549,7 @@ function vHome(){
   var d=pd(today());
   var h='<div class="top"><div class="grow"><div class="eyebrow">'+DNF[d.getDay()]+' · '+d.getDate()+' '+MG[d.getMonth()]+'</div><h1>Ученики</h1></div>'+gear()+'</div>';
   h+=demoBar();
+  var dl=daysLeft();if(dl!=null&&dl<=7&&dl>=0)h+='<div class="note warn"><div class="tx">Доступ к дневнику до <b>'+FB.until.toLocaleDateString('ru-RU')+'</b>. Продлите, чтобы не прерывать учет.</div></div>';
   var debt=0;S.students.forEach(function(st){var b=balance(st.id);if(b<0)debt+=b;});
   var TL=lessonsOn(today()),pm=0;TL.forEach(function(x){var r=S.rec[x.k];if(!r||r.st==='done'||r.st==='cpaid')pm+=x.plan*getRate(x);});
   var mp=monthPF(today().slice(0,7));
@@ -631,7 +715,9 @@ function shMsg(id){
 }
 function shSettings(){
   var h='<h3>Настройки</h3><div class="fl"><span>Тема</span><div class="seg"><button data-a="theme" data-v="auto" class="'+(S.theme==='auto'?'on':'')+'">Как в системе</button><button data-a="theme" data-v="light" class="'+(S.theme==='light'?'on':'')+'">Светлая</button><button data-a="theme" data-v="dark" class="'+(S.theme==='dark'?'on':'')+'">Темная</button></div></div>';
-  h+='<div class="lbl">Резервная копия</div><div class="hint" style="margin:0 0 10px">Данные хранятся на этом устройстве. Раз в неделю сохраняйте копию.</div>';
+  if(FB_ON){var cs={ok:'данные сохраняются в облаке',cache:'нет сети, сохранится, когда появится интернет',sync:'подключение...',err:'ошибка доступа к облаку',nolib:'облако недоступно, данные только на этом устройстве',out:'вход не выполнен'}[FB.state]||'';
+    h+='<div class="lbl">Аккаунт</div><div class="box"><div class="hl"><span>'+esc(FB.user?FB.user.email:'')+'</span></div>'+(FB.until?'<div class="hl"><span>Доступ оплачен до</span><span class="a">'+FB.until.toLocaleDateString('ru-RU')+'</span></div>':'')+'<div class="hl"><span style="color:var(--mut)">'+cs+'</span></div></div><button class="b wide" data-a="logout" style="margin-bottom:6px">Выйти</button>';}
+  h+='<div class="lbl">Резервная копия</div><div class="hint" style="margin:0 0 10px">'+(FB_ON?'Данные хранятся в облаке. Копия нужна на всякий случай, раз в месяц.':'Данные хранятся на этом устройстве. Раз в неделю сохраняйте копию.')+'</div>';
   h+='<div class="two"><button class="b" data-a="bkdl">Скачать копию</button><button class="b" data-a="bkcopy">Скопировать</button></div>';
   h+='<label class="fl" style="margin-top:12px"><span>Восстановить из файла</span><input type="file" id="bkfile" accept=".json,application/json"></label>';
   h+='<textarea id="bktx" style="display:none"></textarea>';
@@ -728,9 +814,11 @@ document.addEventListener('click',function(e){
     case 'clear':if(S.demo||clearArm){S=blank();save();clearArm=0;closeSh();render();toast('Готово, можно добавлять учеников');}
       else{clearArm=1;el.textContent='Точно? Нажмите еще раз';setTimeout(function(){clearArm=0;},4000);}break;
     case 'close':closeSh();break;
+    case 'logout':if(FB.auth){closeSh();try{localStorage.removeItem(KEY);}catch(e){}S=blank();render();FB.auth.signOut();}break;
   }
 });
 
-S=load()||seed();save();applyTheme();render();
+if(FB_ON){S=load()||blank();if(S.demo)S=blank();applyTheme();render();showLogin(true);initCloud();}
+else{S=load()||seed();saveLocal();applyTheme();render();}
 </script>
 </body></html>
